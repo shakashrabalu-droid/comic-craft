@@ -106,18 +106,7 @@ class GeminiService:
         for attempt in range(1, 3):
             try:
                 raw_text = ""
-                # Modern Gemini Interactions API
-                if hasattr(self._client, "interactions"):
-                    try:
-                        interaction = self._client.interactions.create(
-                            model=self.outline_model,
-                            input=f"{OUTLINE_SYSTEM_INSTRUCTION}\n\n{prompt}",
-                        )
-                        raw_text = interaction.output_text or ""
-                    except Exception as ie:
-                        logger.debug(f"Interactions API attempt note: {ie}")
-
-                if not raw_text and hasattr(self._client, "models"):
+                if hasattr(self._client, "models") and hasattr(self._client.models, "generate_content"):
                     from google.genai import types
                     response = self._client.models.generate_content(
                         model=self.outline_model,
@@ -129,9 +118,15 @@ class GeminiService:
                             temperature=0.7,
                         ),
                     )
-                    raw_text = response.text or ""
+                    raw_text = getattr(response, "text", "") or ""
+                elif hasattr(self._client, "interactions"):
+                    interaction = self._client.interactions.create(
+                        model=self.outline_model,
+                        input=f"{OUTLINE_SYSTEM_INSTRUCTION}\n\n{prompt}",
+                    )
+                    raw_text = getattr(interaction, "output_text", "") or ""
 
-                if raw_text:
+                if isinstance(raw_text, str) and raw_text.strip():
                     cleaned_text = self._clean_json_response(raw_text)
                     outline = ComicOutlineSchema.model_validate_json(cleaned_text)
 
@@ -149,16 +144,8 @@ class GeminiService:
                 last_error = e
                 logger.warning(f"Outline generation attempt {attempt} failed: {e}")
 
-        logger.warning(f"Live Gemini outline generation failed ({last_error}). Falling back to robust offline outline generator.")
-        return self._generate_offline_outline(
-            story_idea=story_idea,
-            panel_count=panel_count,
-            genre=genre,
-            tone=tone,
-            art_style=art_style,
-            main_character=main_character,
-            setting=setting,
-        )
+        logger.error(f"Live Gemini outline generation failed: {last_error}")
+        raise GeminiServiceError(f"Live Gemini outline generation failed: {last_error}")
 
     async def generate_story_and_dialogue(
         self,
@@ -185,17 +172,7 @@ class GeminiService:
         for attempt in range(1, 3):
             try:
                 raw_text = ""
-                if hasattr(self._client, "interactions"):
-                    try:
-                        interaction = self._client.interactions.create(
-                            model=self.story_model,
-                            input=f"{STORY_SYSTEM_INSTRUCTION}\n\n{prompt}",
-                        )
-                        raw_text = interaction.output_text or ""
-                    except Exception as ie:
-                        logger.debug(f"Interactions story note: {ie}")
-
-                if not raw_text and hasattr(self._client, "models"):
+                if hasattr(self._client, "models") and hasattr(self._client.models, "generate_content"):
                     from google.genai import types
                     response = self._client.models.generate_content(
                         model=self.story_model,
@@ -207,9 +184,15 @@ class GeminiService:
                             temperature=0.7,
                         ),
                     )
-                    raw_text = response.text or ""
+                    raw_text = getattr(response, "text", "") or ""
+                elif hasattr(self._client, "interactions"):
+                    interaction = self._client.interactions.create(
+                        model=self.story_model,
+                        input=f"{STORY_SYSTEM_INSTRUCTION}\n\n{prompt}",
+                    )
+                    raw_text = getattr(interaction, "output_text", "") or ""
 
-                if raw_text:
+                if isinstance(raw_text, str) and raw_text.strip():
                     cleaned_text = self._clean_json_response(raw_text)
                     story_detail = ComicDetailedStorySchema.model_validate_json(cleaned_text)
                     logger.info(f"Stage 3 Story refined successfully with {len(story_detail.panels)} detailed panels.")
@@ -219,8 +202,8 @@ class GeminiService:
                 last_error = e
                 logger.warning(f"Story refinement attempt {attempt} failed: {e}")
 
-        logger.warning(f"Live Gemini story refinement failed ({last_error}). Falling back to robust offline story generator.")
-        return self._generate_offline_story(outline, art_style)
+        logger.error(f"Live Gemini story refinement failed: {last_error}")
+        raise GeminiServiceError(f"Live Gemini story refinement failed: {last_error}")
 
     def _generate_offline_outline(
         self,
