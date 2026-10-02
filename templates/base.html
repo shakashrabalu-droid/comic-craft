@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}ComicCraft | Generative AI Comic Platform{% endblock %}</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+  <!-- Tailwind CSS CDN for utility spacing and layout speed -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            comicGold: '#f59e0b',
+            comicDark: '#0a0c14',
+            comicCard: '#181d30'
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="bg-[#0a0c14] text-gray-100 min-h-screen flex flex-col">
+  <!-- Header Bar -->
+  <header class="header-nav flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <a href="/" class="brand-logo">
+        COMICCRAFT <span class="brand-badge">STUDIO</span>
+      </a>
+    </div>
+    <div class="flex items-center gap-4">
+      <a href="/" class="btn-comic-secondary text-sm">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+        New Story
+      </a>
+      <a href="/health" target="_blank" class="text-xs text-gray-400 hover:text-amber-400 hidden sm:inline">System Health</a>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="flex-grow">
+    {% block content %}{% endblock %}
+  </main>
+
+  <!-- Studio Footer -->
+  <footer class="border-t border-gray-800 bg-[#0d101d] py-6 px-4 text-center text-xs text-gray-500">
+    <div class="max-w-4xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div>
+        <span class="font-bold text-gray-300">COMICCRAFT</span> &copy; 2026 Generative AI Comic Story Creation Platform.
+      </div>
+      <div class="flex items-center gap-4">
+        <span>Powered by Gemini 3.8 Flash &amp; Stable Diffusion</span>
+        <a href="/health" class="hover:text-amber-400">Health Check</a>
+      </div>
+    </div>
+  </footer>
+
+  <script src="/static/js/app.js"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

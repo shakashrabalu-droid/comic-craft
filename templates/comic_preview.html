@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+
+{% block title %}{{ comic.title }} | ComicCraft Preview{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto px-4 py-8">
+
+  <!-- Top Action Controls -->
+  <div class="comic-card p-4 mb-8 flex flex-wrap items-center justify-between gap-4 border-amber-500/30">
+    <div class="flex items-center gap-3">
+      <a href="/" class="btn-comic-secondary text-sm">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+        New Story
+      </a>
+      <span class="text-xs text-gray-400 font-mono hidden sm:inline">Issue #{{ comic.comic_id[:8] }}</span>
+    </div>
+
+    <div class="flex items-center gap-3">
+      <!-- Regenerate Button Triggering Modal -->
+      <button type="button" class="btn-open-regen btn-comic-secondary text-sm text-amber-400 border-amber-500/40 hover:bg-amber-500/10">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+        Regenerate Panel
+      </button>
+
+      <!-- Download PDF Button -->
+      <a href="/comic/{{ comic.comic_id }}/pdf" class="btn-comic-primary text-sm sm:text-base py-2 px-5">
+        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg>
+        Download PDF
+      </a>
+    </div>
+  </div>
+
+  <!-- Real Comic Book Page Canvas -->
+  <div class="comic-page-canvas">
+    
+    <!-- Comic Book Title Header -->
+    <div class="comic-banner">
+      <h1 class="comic-banner-title">{{ comic.title }}</h1>
+      <div class="comic-banner-meta">
+        <span>ISSUE #1</span> &bull; 
+        <span>GENRE: {{ comic.genre.upper() }}</span> &bull; 
+        <span>STYLE: {{ comic.art_style.upper() }}</span>
+      </div>
+      
+      <!-- Character Cast Badges -->
+      {% if comic.characters %}
+      <div class="mt-3 flex flex-wrap justify-center gap-2">
+        {% for char in comic.characters %}
+        <span class="inline-flex items-center text-xs bg-zinc-200 text-zinc-800 font-bold px-2.5 py-0.5 rounded-full border border-zinc-400">
+          👤 {{ char.name }} ({{ char.role }})
+        </span>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Structured Comic Panels Grid -->
+    <div class="comic-grid {{ comic.layout.css_grid }}">
+      
+      {% for panel in comic.panels %}
+      <div class="comic-panel-box" id="panel-box-{{ panel.panel_number }}">
+        
+        <!-- Panel Header -->
+        <div class="panel-header-badge">
+          <span>PANEL #{{ panel.panel_number }}</span>
+          <button
+            type="button"
+            class="btn-open-regen text-xs text-amber-300 hover:text-white transition underline font-sans font-bold"
+            data-panel-number="{{ panel.panel_number }}"
+            title="Redraw this panel illustration"
+          >
+            Redraw ⟳
+          </button>
+        </div>
+
+        <!-- Panel Illustration Image -->
+        <div class="panel-image-container">
+          <img
+            src="{{ panel.image_url }}"
+            alt="Comic Panel {{ panel.panel_number }}"
+            class="panel-img"
+            data-panel-img="{{ panel.panel_number }}"
+            loading="lazy"
+          >
+        </div>
+
+        <!-- Narration Box (Top Yellow Caption Box) -->
+        {% if panel.narration %}
+        <div class="comic-narration-box">
+          <span class="narration-tag">CAPTION</span>
+          <span>{{ panel.narration }}</span>
+        </div>
+        {% endif %}
+
+        <!-- Dialogue Stream (Speech Balloons) -->
+        <div class="dialogue-stream">
+          {% if panel.dialogue %}
+            {% for item in panel.dialogue %}
+            <div class="speech-balloon {{ item.style }}">
+              <div class="speaker-label">{{ item.speaker }}</div>
+              <div class="dialogue-text">"{{ item.text }}"</div>
+            </div>
+            {% endfor %}
+          {% else %}
+            <div class="text-xs text-gray-500 italic p-2 text-center">
+              [Dramatic Visual Beat &bull; Silent Action]
+            </div>
+          {% endif %}
+        </div>
+
+      </div>
+      {% endfor %}
+
+    </div>
+
+    <!-- Page Footer Note -->
+    <div class="mt-8 pt-4 border-t-2 border-black flex justify-between items-center text-xs text-gray-600 font-bold uppercase tracking-wider">
+      <span>ComicCraft Original &bull; All Rights Reserved</span>
+      <a href="/comic/{{ comic.comic_id }}/export" class="text-indigo-600 hover:underline">View Export Showcase &rarr;</a>
+    </div>
+
+  </div>
+
+</div>
+
+<!-- Modal for Individual Panel Regeneration -->
+<div id="regenerate-modal" class="modal-overlay">
+  <div class="comic-card max-w-md w-full p-6 bg-zinc-900 border-2 border-amber-400">
+    <div class="flex items-center justify-between mb-4 border-b border-gray-800 pb-3">
+      <h3 class="font-bold text-lg text-white" style="font-family: 'Bangers', cursive; letter-spacing: 1px;">
+        REGENERATE PANEL ILLUSTRATION
+      </h3>
+      <button type="button" class="btn-close-modal text-gray-400 hover:text-white text-xl font-bold">&times;</button>
+    </div>
+
+    <form id="regen-form" data-comic-id="{{ comic.comic_id }}" class="space-y-4">
+      <div>
+        <label for="regen-panel-number" class="input-label">Select Panel</label>
+        <select id="regen-panel-number" class="input-control">
+          {% for panel in comic.panels %}
+          <option value="{{ panel.panel_number }}">Panel #{{ panel.panel_number }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div>
+        <label for="regen-prompt-hint" class="input-label">Artistic Direction Note (Optional)</label>
+        <textarea
+          id="regen-prompt-hint"
+          rows="3"
+          placeholder="e.g. Zoom in on face with dramatic shadows, add neon rain reflections..."
+          class="input-control text-sm"
+        ></textarea>
+        <p class="text-xs text-gray-400 mt-1">Prompt adjustments are combined with character profiles to maintain continuity.</p>
+      </div>
+
+      <div class="flex justify-end gap-3 pt-3 border-t border-gray-800">
+        <button type="button" class="btn-close-modal btn-comic-secondary text-sm">Cancel</button>
+        <button type="submit" class="btn-comic-primary text-sm py-2 px-6">Redraw Panel</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

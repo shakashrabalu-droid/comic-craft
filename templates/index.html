@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+
+{% block title %}ComicCraft | Turn Your Ideas Into Comics{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto px-4 py-10">
+
+  <!-- Hero Header -->
+  <div class="text-center mb-10">
+    <div class="inline-block bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-bold px-3 py-1 rounded-full mb-3 uppercase tracking-wider">
+      Generative AI Comic Studio
+    </div>
+    <h1 class="text-4xl sm:text-6xl font-black tracking-tight text-white mb-3" style="font-family: 'Bangers', cursive; letter-spacing: 2px;">
+      COMICCRAFT
+    </h1>
+    <p class="text-lg sm:text-xl text-gray-300 max-w-2xl mx-auto font-medium">
+      Turn your ideas into comics. Powered by autonomous narrative architecture and AI panel synthesis.
+    </p>
+
+    <!-- Quick Inspiration Presets -->
+    <div class="mt-6 flex flex-wrap items-center justify-center gap-2">
+      <span class="text-xs text-gray-400 font-bold uppercase tracking-wider mr-2">Try A Premise:</span>
+      <button type="button" data-preset="superhero" class="text-xs bg-zinc-800 hover:bg-amber-500 hover:text-black border border-zinc-700 text-gray-200 px-3 py-1.5 rounded-md transition font-semibold">
+        ⚡ Superhero Genesis
+      </button>
+      <button type="button" data-preset="scifi" class="text-xs bg-zinc-800 hover:bg-cyan-500 hover:text-black border border-zinc-700 text-gray-200 px-3 py-1.5 rounded-md transition font-semibold">
+        🚀 Sci-Fi Odyssey
+      </button>
+      <button type="button" data-preset="noir" class="text-xs bg-zinc-800 hover:bg-red-500 hover:text-white border border-zinc-700 text-gray-200 px-3 py-1.5 rounded-md transition font-semibold">
+        🕵️ Noir Mystery
+      </button>
+    </div>
+  </div>
+
+  {% if error_banner %}
+  <div class="mb-8 p-4 bg-red-950/80 border-2 border-red-500 rounded-lg text-red-200 text-sm font-semibold flex items-center gap-3 shadow-lg">
+    <svg class="w-5 h-5 text-red-400 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>
+    <span>{{ error_banner }}</span>
+  </div>
+  {% endif %}
+
+  <!-- Main Creation Form -->
+  <form action="/generate" method="POST" class="comic-card p-6 sm:p-8 space-y-8">
+    
+    <!-- Section 1: Story Premise -->
+    <div>
+      <div class="flex items-center justify-between mb-2">
+        <label for="story_idea" class="input-label mb-0">1. Story Idea <span class="text-red-400">*</span></label>
+        <span id="story_char_counter" class="text-xs text-gray-400 font-mono">0 / 2000</span>
+      </div>
+      <textarea
+        id="story_idea"
+        name="story_idea"
+        rows="4"
+        required
+        minlength="5"
+        maxlength="2000"
+        placeholder="Enter your core comic premise or concept (e.g. A young inventor builds a clockwork falcon that suddenly gains consciousness during a lunar eclipse...)"
+        class="input-control font-normal leading-relaxed resize-y"
+      ></textarea>
+      <p class="text-xs text-gray-400 mt-1.5">
+        Provide a prompt or narrative spark. ComicCraft expands this into outline, dialogue, characters, and visual prompts.
+      </p>
+    </div>
+
+    <!-- Section 2: Narrative Coordinates -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 pt-2 border-t border-gray-800">
+      
+      <!-- Genre -->
+      <div>
+        <label for="genre" class="input-label">Genre</label>
+        <select id="genre" name="genre" class="input-control">
+          {% for g in genres %}
+          <option value="{{ g }}" {% if g == 'Superhero' %}selected{% endif %}>{{ g }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- Tone -->
+      <div>
+        <label for="tone" class="input-label">Tone &amp; Mood</label>
+        <select id="tone" name="tone" class="input-control">
+          {% for t in tones %}
+          <option value="{{ t }}" {% if t == 'Epic / Action-Packed' %}selected{% endif %}>{{ t }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- Art Style -->
+      <div>
+        <label for="art_style" class="input-label">Illustration Art Style</label>
+        <select id="art_style" name="art_style" class="input-control">
+          {% for s in art_styles %}
+          <option value="{{ s }}" {% if 'Marvel' in s %}selected{% endif %}>{{ s }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+    </div>
+
+    <!-- Section 3: Characters & Setting -->
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-6 pt-2 border-t border-gray-800">
+      
+      <!-- Main Character -->
+      <div>
+        <label for="main_character" class="input-label">Main Character (Optional)</label>
+        <input
+          type="text"
+          id="main_character"
+          name="main_character"
+          placeholder="e.g. Jaxen Stone"
+          maxlength="80"
+          class="input-control"
+        >
+      </div>
+
+      <!-- Supporting Cast -->
+      <div>
+        <label for="supporting_characters" class="input-label">Supporting / Villains</label>
+        <input
+          type="text"
+          id="supporting_characters"
+          name="supporting_characters"
+          placeholder="e.g. Doctor Cobalt, Maya"
+          maxlength="150"
+          class="input-control"
+        >
+      </div>
+
+      <!-- Setting -->
+      <div>
+        <label for="setting" class="input-label">Setting / Universe</label>
+        <input
+          type="text"
+          id="setting"
+          name="setting"
+          placeholder="e.g. Neo-Tokyo 2099, Sunken Atlantis"
+          maxlength="150"
+          class="input-control"
+        >
+      </div>
+
+    </div>
+
+    <!-- Section 4: Format & Scope -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-2 border-t border-gray-800">
+      
+      <!-- Panel Count -->
+      <div>
+        <label for="panel_count" class="input-label">Panel Count</label>
+        <select id="panel_count" name="panel_count" class="input-control">
+          {% for p in allowed_panels %}
+          <option value="{{ p }}" {% if p == 4 %}selected{% endif %}>
+            {{ p }} {% if p == 1 %}Panel (Splash Page){% elif p == 2 %}Panels (Duo Confrontation){% elif p == 3 %}Panels (Classic Strip){% elif p == 4 %}Panels (Standard 2x2 Grid){% elif p == 6 %}Panels (Full Comic Page){% endif %}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- Target Audience -->
+      <div>
+        <label for="target_audience" class="input-label">Target Audience</label>
+        <select id="target_audience" name="target_audience" class="input-control">
+          <option value="All Ages" selected>All Ages</option>
+          <option value="Young Adult / Teen">Young Adult / Teen</option>
+          <option value="Mature Readers">Mature Readers</option>
+        </select>
+      </div>
+
+    </div>
+
+    <!-- CTA Submit Button -->
+    <div class="pt-6 border-t border-gray-800 text-center">
+      <button type="submit" class="btn-comic-primary w-full sm:w-auto px-12 py-4 text-xl">
+        <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z"></path></svg>
+        CREATE MY COMIC
+      </button>
+      <p class="text-xs text-gray-500 mt-2">Stage-by-stage generation with live continuity tracking</p>
+    </div>
+
+  </form>
+
+</div>
+{% endblock %}

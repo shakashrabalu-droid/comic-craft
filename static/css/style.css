@@ -1,0 +1,428 @@
+/* ComicCraft - Modern Creative Comic Studio Stylesheet */
+
+@import url('https://fonts.googleapis.com/css2?family=Bangers&family=Inter:wght@400;500;600;700;800&family=Permanent+Marker&family=Comic+Neue:wght@700&display=swap');
+
+:root {
+  --bg-primary: #0a0c14;
+  --bg-secondary: #121624;
+  --bg-card: #181d30;
+  --bg-card-hover: #1e253e;
+  
+  --accent-gold: #f59e0b;
+  --accent-gold-hover: #d97706;
+  --accent-gold-light: #fef3c7;
+  
+  --accent-cyan: #06b6d4;
+  --accent-cyan-light: #e0f2fe;
+  
+  --text-main: #f3f4f6;
+  --text-muted: #9ca3af;
+  --text-dark: #111827;
+  
+  --border-comic: #1f2937;
+  --border-gold: #f59e0b;
+  
+  --comic-font: 'Comic Neue', 'Bangers', cursive, sans-serif;
+  --marker-font: 'Permanent Marker', cursive, sans-serif;
+  --sans-font: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--sans-font);
+  background-color: var(--bg-primary);
+  color: var(--text-main);
+  line-height: 1.5;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow-x: hidden;
+}
+
+/* Header & Nav */
+.header-nav {
+  background: rgba(18, 22, 36, 0.85);
+  backdrop-filter: blur(12px);
+  border-bottom: 2px solid var(--border-comic);
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  padding: 0.85rem 1.5rem;
+}
+
+.brand-logo {
+  font-family: 'Bangers', cursive;
+  font-size: 2rem;
+  letter-spacing: 1.5px;
+  color: var(--accent-gold);
+  text-shadow: 2px 2px 0px #000;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  text-decoration: none;
+}
+
+.brand-badge {
+  font-family: var(--sans-font);
+  font-size: 0.65rem;
+  font-weight: 800;
+  background: #3b82f6;
+  color: #fff;
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+  letter-spacing: 0.5px;
+  vertical-align: middle;
+}
+
+/* Studio Buttons */
+.btn-comic-primary {
+  background: var(--accent-gold);
+  color: var(--text-dark);
+  font-family: 'Bangers', cursive;
+  font-size: 1.35rem;
+  letter-spacing: 1px;
+  padding: 0.75rem 2rem;
+  border-radius: 8px;
+  border: 2px solid #000;
+  box-shadow: 3px 3px 0px #000;
+  cursor: pointer;
+  transition: all 0.15s ease-in-out;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.btn-comic-primary:hover {
+  background: #fbbf24;
+  transform: translate(-2px, -2px);
+  box-shadow: 5px 5px 0px #000;
+}
+
+.btn-comic-primary:active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0px #000;
+}
+
+.btn-comic-secondary {
+  background: var(--bg-card);
+  color: var(--text-main);
+  border: 2px solid var(--border-comic);
+  font-weight: 600;
+  font-size: 0.95rem;
+  padding: 0.65rem 1.25rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.btn-comic-secondary:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--accent-gold);
+  color: #fff;
+}
+
+/* Cards & Form Containers */
+.comic-card {
+  background: var(--bg-card);
+  border: 2px solid var(--border-comic);
+  border-radius: 12px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+  transition: border-color 0.2s ease;
+}
+
+.comic-card:hover {
+  border-color: rgba(245, 158, 11, 0.4);
+}
+
+.input-label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.75px;
+  color: var(--accent-gold);
+  margin-bottom: 0.4rem;
+}
+
+.input-control {
+  width: 100%;
+  background: var(--bg-secondary);
+  border: 1.5px solid var(--border-comic);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  color: var(--text-main);
+  font-size: 0.95rem;
+  font-family: inherit;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.input-control:focus {
+  outline: none;
+  border-color: var(--accent-gold);
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.25);
+}
+
+.input-control::placeholder {
+  color: #6b7280;
+}
+
+/* Comic Book Preview Styles */
+.comic-page-canvas {
+  background: #fdfdfd;
+  color: var(--text-dark);
+  border: 3px solid #000;
+  box-shadow: 8px 8px 0px rgba(0, 0, 0, 0.75);
+  border-radius: 8px;
+  padding: 1.5rem;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.comic-banner {
+  border-bottom: 3px solid #000;
+  padding-bottom: 0.75rem;
+  margin-bottom: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.comic-banner-title {
+  font-family: 'Bangers', cursive;
+  font-size: 2.75rem;
+  color: #111827;
+  letter-spacing: 1.5px;
+  line-height: 1.1;
+}
+
+.comic-banner-meta {
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: #4b5563;
+  letter-spacing: 1px;
+  margin-top: 0.25rem;
+}
+
+/* Comic Panel Presentation */
+.comic-grid {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.grid-cols-1 { grid-template-columns: 1fr; }
+.grid-cols-2 { grid-template-columns: repeat(2, 1fr); }
+.grid-cols-3 { grid-template-columns: repeat(3, 1fr); }
+
+@media (max-width: 860px) {
+  .grid-cols-2, .grid-cols-3 {
+    grid-template-columns: 1fr;
+  }
+}
+
+.comic-panel-box {
+  background: #fff;
+  border: 3px solid #000;
+  box-shadow: 4px 4px 0px #000;
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.panel-header-badge {
+  background: #111827;
+  color: #fbbf24;
+  font-family: 'Bangers', cursive;
+  font-size: 1.1rem;
+  letter-spacing: 1px;
+  padding: 0.35rem 0.75rem;
+  border-bottom: 2px solid #000;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.panel-image-container {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  background: #1f2937;
+  overflow: hidden;
+}
+
+.panel-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* Comic Narration Box (Yellow Classic Caption) */
+.comic-narration-box {
+  background: #fef08a;
+  border-bottom: 2px solid #000;
+  padding: 0.6rem 0.85rem;
+  font-family: var(--comic-font);
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #1c1917;
+  line-height: 1.35;
+  display: flex;
+  gap: 0.4rem;
+}
+
+.narration-tag {
+  background: #ca8a04;
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 900;
+  padding: 0.1rem 0.35rem;
+  border-radius: 3px;
+  align-self: flex-start;
+  text-transform: uppercase;
+}
+
+/* Comic Dialogue Balloons */
+.dialogue-stream {
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  background: #fafaf9;
+  flex-grow: 1;
+}
+
+.speech-balloon {
+  background: #ffffff;
+  border: 2px solid #000;
+  border-radius: 12px;
+  padding: 0.6rem 0.85rem;
+  box-shadow: 2px 2px 0px rgba(0,0,0,0.15);
+  position: relative;
+  max-width: 95%;
+}
+
+.speech-balloon.shout {
+  border: 2.5px dashed #dc2626;
+  background: #fef2f2;
+}
+
+.speech-balloon.thought {
+  border-radius: 18px;
+  border-style: dotted;
+  background: #f0fdf4;
+}
+
+.speaker-label {
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: #2563eb;
+  letter-spacing: 0.5px;
+  margin-bottom: 0.15rem;
+}
+
+.dialogue-text {
+  font-family: var(--comic-font);
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #111827;
+  line-height: 1.3;
+}
+
+/* Stage Progress Tracker */
+.stepper-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.step-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.85rem 1.25rem;
+  border-radius: 10px;
+  background: var(--bg-secondary);
+  border: 1.5px solid var(--border-comic);
+  transition: all 0.3s ease;
+}
+
+.step-item.active {
+  background: rgba(245, 158, 11, 0.1);
+  border-color: var(--accent-gold);
+  box-shadow: 0 0 15px rgba(245, 158, 11, 0.2);
+}
+
+.step-item.completed {
+  border-color: #10b981;
+  background: rgba(16, 185, 129, 0.08);
+}
+
+.step-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 0.9rem;
+  background: #1f2937;
+  color: #9ca3af;
+  flex-shrink: 0;
+}
+
+.step-item.active .step-icon {
+  background: var(--accent-gold);
+  color: #000;
+  animation: pulse-glow 1.5s infinite;
+}
+
+.step-item.completed .step-icon {
+  background: #10b981;
+  color: #fff;
+}
+
+@keyframes pulse-glow {
+  0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7); }
+  70% { transform: scale(1.08); box-shadow: 0 0 0 10px rgba(245, 158, 11, 0); }
+  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
+}
+
+/* Modal for Regeneration */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(4px);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 1rem;
+}
+
+.modal-overlay.open {
+  display: flex;
+}
+
+/* Responsive Utilities */
+@media (max-width: 640px) {
+  .comic-banner-title { font-size: 1.85rem; }
+  .comic-page-canvas { padding: 0.75rem; }
+  .btn-comic-primary { width: 100%; font-size: 1.15rem; }
+}

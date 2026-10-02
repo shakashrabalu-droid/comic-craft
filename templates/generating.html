@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+
+{% block title %}Generating Your Comic... | ComicCraft{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto px-4 py-12" id="comic-generation-tracker" data-comic-id="{{ comic_id }}">
+
+  <!-- Header Card -->
+  <div class="comic-card p-6 sm:p-8 text-center mb-8 border-amber-500/40">
+    <div class="inline-flex items-center justify-center p-3 bg-amber-500/10 rounded-full mb-4">
+      <svg class="w-8 h-8 text-amber-400 animate-spin" fill="none" viewBox="0 0 24 24">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+      </svg>
+    </div>
+
+    <h2 class="text-2xl sm:text-3xl font-black text-white mb-2" style="font-family: 'Bangers', cursive; letter-spacing: 1px;">
+      CRAFTING YOUR COMIC
+    </h2>
+    <p id="current-stage-label" class="text-amber-400 font-semibold text-lg animate-pulse mb-6">
+      {{ comic.stage_description }}
+    </p>
+
+    <!-- Visual Progress Bar -->
+    <div class="w-full bg-zinc-800 rounded-full h-3 overflow-hidden border border-zinc-700">
+      <div id="progress-bar-fill" class="bg-amber-500 h-3 rounded-full transition-all duration-500" style="width: 15%;"></div>
+    </div>
+    
+    <div class="mt-4 flex flex-wrap justify-between text-xs text-gray-400">
+      <span>Issue ID: <span class="font-mono text-gray-300">{{ comic_id[:8] }}</span></span>
+      <span>Genre: <span class="text-gray-300 font-semibold">{{ comic.genre }}</span></span>
+      <span>Panels: <span class="text-gray-300 font-semibold">{{ comic.panel_count }}</span></span>
+    </div>
+  </div>
+
+  <!-- Stage-Based Stepper Progression -->
+  <div class="comic-card p-6 sm:p-8 stepper-container">
+    
+    <!-- Stage 1 -->
+    <div class="step-item" data-stage="QUEUED">
+      <div class="step-icon">1</div>
+      <div class="flex-grow">
+        <h4 class="font-bold text-sm text-gray-200">Preparing your story...</h4>
+        <p class="text-xs text-gray-400">Validating narrative inputs and initializing studio session.</p>
+      </div>
+    </div>
+
+    <!-- Stage 2 -->
+    <div class="step-item" data-stage="OUTLINE_GENERATING">
+      <div class="step-icon">2</div>
+      <div class="flex-grow">
+        <h4 class="font-bold text-sm text-gray-200">Building the comic outline...</h4>
+        <p class="text-xs text-gray-400">Generating dramatic story arc, character profiles, and panel beats with Gemini.</p>
+      </div>
+    </div>
+
+    <!-- Stage 3 -->
+    <div class="step-item" data-stage="STORY_GENERATING">
+      <div class="step-icon">3</div>
+      <div class="flex-grow">
+        <h4 class="font-bold text-sm text-gray-200">Writing dialogue and refining scenes...</h4>
+        <p class="text-xs text-gray-400">Crafting concise speech bubbles, narration captions, and emotional pacing.</p>
+      </div>
+    </div>
+
+    <!-- Stage 4 & 5 -->
+    <div class="step-item" data-stage="IMAGES_GENERATING">
+      <div class="step-icon">4</div>
+      <div class="flex-grow">
+        <h4 class="font-bold text-sm text-gray-200">Generating panel illustrations...</h4>
+        <p class="text-xs text-gray-400">Synthesizing consistent character artwork and comic scenes via Stable Diffusion.</p>
+      </div>
+    </div>
+
+    <!-- Stage 6 -->
+    <div class="step-item" data-stage="LAYOUT_BUILDING">
+      <div class="step-icon">5</div>
+      <div class="flex-grow">
+        <h4 class="font-bold text-sm text-gray-200">Assembling your comic...</h4>
+        <p class="text-xs text-gray-400">Constructing responsive panel grid geometry and balloon alignment.</p>
+      </div>
+    </div>
+
+    <!-- Stage 7 -->
+    <div class="step-item" data-stage="PDF_GENERATING">
+      <div class="step-icon">6</div>
+      <div class="flex-grow">
+        <h4 class="font-bold text-sm text-gray-200">Preparing PDF...</h4>
+        <p class="text-xs text-gray-400">Compiling publication-ready PDF with embedded typography and artwork.</p>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Error Alert Container (Hidden by default) -->
+  <div id="generation-error-alert" style="display: none;" class="mt-8 p-6 bg-red-950/90 border-2 border-red-500 rounded-xl text-center">
+    <div class="text-red-400 text-3xl font-black mb-2">!</div>
+    <h3 class="text-lg font-bold text-white mb-2">Generation Notice</h3>
+    <p id="generation-error-message" class="text-sm text-red-200 mb-4">Comic generation could not be completed. Please try again.</p>
+    <a href="/" class="btn-comic-primary px-6 py-2.5 text-base rounded-md">Return to Studio</a>
+  </div>
+
+</div>
+{% endblock %}
