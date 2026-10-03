@@ -1,45 +1,363 @@
-"""
+﻿"""
 ComicCraft - Image Generation Service
-Generates panel illustrations using Hugging Face Stable Diffusion, Gemini Image API, or Stylized Comic Canvas Fallback.
+
+Handles:
+- Flux/HuggingFace image generation
+- Character continuity prompts
+- Local fallback image generation
+- Static image URLs
 """
 
 import asyncio
-import io
-import math
-import random
-import time
+import logging
 from pathlib import Path
-from typing import List, Optional
+from typing import Any, Optional
+from uuid import uuid4
+
 from PIL import Image, ImageDraw, ImageFont
 
 from app.config import settings
-from app.prompts.image_prompt import format_panel_image_prompt, get_negative_prompt
-from app.models.comic import CharacterProfile
-from app.utils.file_manager import file_manager
-from app.utils.logger import logger
+from app.services.flux_service import flux_service
 
-
-class ImageServiceError(Exception):
-    """Raised for image generation failures."""
-    pass
+logger = logging.getLogger(__name__)
 
 
 class ImageService:
-    """Orchestrates image generation across multiple backends with resilient fallbacks."""
 
     def __init__(self):
-        self.hf_token = settings.HUGGINGFACE_API_KEY
-        self.sd_model = settings.STABLE_DIFFUSION_MODEL
-        self.backend_mode = settings.IMAGE_GENERATION_BACKEND
-        self._hf_client = None
+        self.backend = settings.IMAGE_GENERATION_BACKEND
 
-        if self.hf_token:
+    # ============================================================
+    # CHARACTER CONTINUITY
+    # ============================================================
+
+    @staticmethod
+    def _character_continuity(
+        character_profiles: Optional[list[Any]],
+    ) -> str:
+
+        if not character_profiles:
+            return ""
+
+        parts = []
+
+        for character in character_profiles:
+
             try:
-                from huggingface_hub import InferenceClient
-                self._hf_client = InferenceClient(token=self.hf_token)
-                logger.info("Initialized Hugging Face InferenceClient.")
-            except Exception as e:
-                logger.warning(f"Failed to initialize Hugging Face client: {e}")
+                if hasattr(
+                    character,
+                    "to_continuity_prompt",
+                ):
+                    parts.append(
+                        character.to_continuity_prompt()
+                    )
+                    continue
+
+                name = getattr(
+                    character,
+                    "name",
+                    "",
+                )
+
+                role = getattr(
+                    character,
+                    "role",
+                    "",
+                )
+
+                appearance = getattr(
+                    character,
+                    "appearance",
+                    "",
+                )
+
+                hair = getattr(
+                    character,
+                    "hair",
+                    "",
+                )
+
+                clothing = getattr(
+                    character,
+                    "clothing",
+                    "",
+                )
+
+                parts.append(
+                    (
+                        f"{name} ({role}); "
+                        f"Appearance: {appearance}; "
+                        f"Hair: {hair}; "
+                        f"Clothing: {clothing}"
+                    )
+                )
+
+            except Exception:
+                continue
+
+        if not parts:
+            return ""
+
+        return (
+            "\nCHARACTER CONTINUITY:\n"
+            + "\n".join(
+                f"- {item}"
+                for item in parts
+            )
+        )
+
+    # ============================================================
+    # PROVIDER
+    # ============================================================
+
+    def generate(
+        self,
+        prompt: str,
+    ) -> Path:
+
+        if self.backend in (
+            "auto",
+            "huggingface",
+        ):
+
+            # IMPORTANT:
+            # flux_service.generate() accepts the prompt.
+            # Do NOT pass filename= here.
+            result = flux_service.generate(
+                prompt=prompt,
+            )
+
+            return Path(result)
+
+        if self.backend == "fallback":
+            raise RuntimeError(
+                "Fallback backend selected."
+            )
+
+        if self.backend == "gemini":
+            raise RuntimeError(
+                "Gemini image backend is not "
+                "implemented in ImageService."
+            )
+
+        raise RuntimeError(
+            f"Unsupported image generation backend: "
+            f"{self.backend}"
+        )
+
+    # ============================================================
+    # LOCAL FALLBACK
+    # ============================================================
+
+    def _create_fallback_image(
+        self,
+        comic_id: str,
+        panel_number: int,
+        visual_prompt: str,
+        art_style: str,
+    ):
+
+        unique_id = uuid4().hex[:8]
+
+        filename = (
+            f"{comic_id}_panel_{panel_number}_"
+            f"{unique_id}.png"
+        )
+
+        output_path = (
+            settings.IMAGES_DIR
+            / filename
+        )
+
+        static_path = (
+            settings.STATIC_DIR
+            / "generated"
+            / filename
+        )
+
+        output_path.parent.mkdir(
+            parents=True,
+            exist_ok=True,
+        )
+
+        static_path.parent.mkdir(
+            parents=True,
+            exist_ok=True,
+        )
+
+        width = 768
+        height = 768
+
+        image = Image.new(
+            "RGB",
+            (width, height),
+            "#111111",
+        )
+
+        draw = ImageDraw.Draw(
+            image
+        )
+
+        # Border
+        draw.rectangle(
+            (
+                20,
+                20,
+                width - 20,
+                height - 20,
+            ),
+            outline="#FFFFFF",
+            width=4,
+        )
+
+        # Header
+        draw.rectangle(
+            (
+                40,
+                40,
+                width - 40,
+                120,
+            ),
+            outline="#FFFFFF",
+            width=2,
+        )
+
+        title = (
+            f"COMICCRAFT • PANEL "
+            f"{panel_number}"
+        )
+
+        try:
+
+            font_large = ImageFont.truetype(
+                "arial.ttf",
+                28,
+            )
+
+            font_small = ImageFont.truetype(
+                "arial.ttf",
+                20,
+            )
+
+        except Exception:
+
+            font_large = (
+                ImageFont.load_default()
+            )
+
+            font_small = (
+                ImageFont.load_default()
+            )
+
+        draw.text(
+            (60, 65),
+            title,
+            fill="#FFFFFF",
+            font=font_large,
+        )
+
+        # Main visual area
+        visual_box = (
+            60,
+            160,
+            width - 60,
+            height - 170,
+        )
+
+        draw.rectangle(
+            visual_box,
+            outline="#AAAAAA",
+            width=2,
+        )
+
+        # Simple cinematic placeholder
+        center_x = width // 2
+        center_y = 450
+
+        draw.ellipse(
+            (
+                center_x - 90,
+                center_y - 90,
+                center_x + 90,
+                center_y + 90,
+            ),
+            outline="#FFFFFF",
+            width=4,
+        )
+
+        draw.line(
+            (
+                center_x - 180,
+                center_y + 170,
+                center_x,
+                center_y + 20,
+            ),
+            fill="#FFFFFF",
+            width=4,
+        )
+
+        draw.line(
+            (
+                center_x + 180,
+                center_y + 170,
+                center_x,
+                center_y + 20,
+            ),
+            fill="#FFFFFF",
+            width=4,
+        )
+
+        # Prompt
+        prompt_text = (
+            visual_prompt[:240]
+        )
+
+        draw.text(
+            (
+                75,
+                height - 145,
+            ),
+            prompt_text,
+            fill="#FFFFFF",
+            font=font_small,
+        )
+
+        draw.text(
+            (
+                75,
+                height - 95,
+            ),
+            f"Style: {art_style[:100]}",
+            fill="#BBBBBB",
+            font=font_small,
+        )
+
+        image.save(
+            output_path
+        )
+
+        image.save(
+            static_path
+        )
+
+        url = (
+            f"/static/generated/"
+            f"{filename}"
+        )
+
+        logger.info(
+            "Created local fallback image: %s",
+            output_path,
+        )
+
+        return (
+            filename,
+            url,
+        )
+
+    # ============================================================
+    # PANEL IMAGE
+    # ============================================================
 
     async def generate_panel_image(
         self,
@@ -47,230 +365,135 @@ class ImageService:
         panel_number: int,
         visual_prompt: str,
         art_style: str,
-        scene_description: str,
-        character_profiles: Optional[List[CharacterProfile]] = None,
-    ) -> tuple[str, str]:
-        """
-        Generates an illustration for a single panel.
-        Returns tuple of (safe_filename, relative_web_url).
-        """
-        full_prompt = format_panel_image_prompt(
-            base_visual_prompt=visual_prompt,
-            art_style=art_style,
-            character_profiles=character_profiles,
-            scene_number=panel_number,
-        )
-        negative_prompt = get_negative_prompt(art_style)
-        filename = file_manager.generate_image_filename(comic_id, panel_number)
-        output_path = file_manager.get_image_path(filename)
-        static_output_path = settings.STATIC_DIR / "generated" / filename
+        scene_description: Optional[str] = None,
+        character_profiles: Optional[list[Any]] = None,
+        **kwargs: Any,
+    ):
 
-        logger.info(f"Generating illustration for Comic [{comic_id[:8]}] Panel #{panel_number} (Style: {art_style})")
-
-        # 1. Attempt Hugging Face Stable Diffusion if configured
-        if self._hf_client and self.backend_mode in ("auto", "huggingface"):
-            try:
-                img_data = await self._generate_with_hf(full_prompt, negative_prompt)
-                if img_data:
-                    self._save_and_mirror_image(img_data, output_path, static_output_path)
-                    logger.info(f"Panel #{panel_number} generated via Hugging Face Stable Diffusion.")
-                    return filename, f"/static/generated/{filename}"
-            except Exception as e:
-                logger.warning(f"HF Stable Diffusion generation failed for panel {panel_number}: {e}. Falling back.")
-
-        # 2. Attempt Gemini Image API if configured
-        if settings.GEMINI_API_KEY and self.backend_mode in ("auto", "gemini"):
-            try:
-                img_data = await self._generate_with_gemini(full_prompt)
-                if img_data:
-                    self._save_and_mirror_image(img_data, output_path, static_output_path)
-                    logger.info(f"Panel #{panel_number} generated via Gemini Image API.")
-                    return filename, f"/static/generated/{filename}"
-            except Exception as e:
-                logger.warning(f"Gemini Image generation failed for panel {panel_number}: {e}. Falling back.")
-
-        # 3. Resilient Stylized Comic Canvas Fallback
-        logger.info(f"Rendering high-fidelity stylized comic canvas for Panel #{panel_number}.")
-        fallback_img = self._create_stylized_comic_canvas(
-            panel_number=panel_number,
-            art_style=art_style,
-            scene_description=scene_description,
-            visual_prompt=visual_prompt,
-        )
-        self._save_and_mirror_image(fallback_img, output_path, static_output_path)
-        return filename, f"/static/generated/{filename}"
-
-    async def _generate_with_hf(self, prompt: str, negative_prompt: str) -> Optional[Image.Image]:
-        """Calls Hugging Face InferenceClient text_to_image in thread pool."""
-        loop = asyncio.get_running_loop()
-
-        def _call_hf():
-            return self._hf_client.text_to_image(
-                prompt=prompt,
-                negative_prompt=negative_prompt,
-                model=self.sd_model,
-                width=768,
-                height=768,
+        continuity = (
+            self._character_continuity(
+                character_profiles
             )
+        )
+
+        prompt = f"""
+Create a high-quality comic panel illustration.
+
+ART STYLE:
+{art_style}
+
+VISUAL DESCRIPTION:
+{visual_prompt}
+
+SCENE:
+{scene_description or visual_prompt}
+
+{continuity}
+
+REQUIREMENTS:
+- cinematic comic composition
+- strong subject separation
+- clear character poses
+- detailed environment
+- consistent character appearance
+- dramatic lighting
+- readable silhouettes
+- no UI elements
+- no watermark
+- no speech bubbles
+- no written text
+"""
 
         try:
-            return await asyncio.wait_for(loop.run_in_executor(None, _call_hf), timeout=35.0)
-        except Exception as e:
-            logger.warning(f"HF text_to_image error: {e}")
-            return None
 
-    async def _generate_with_gemini(self, prompt: str) -> Optional[Image.Image]:
-        """Attempts Gemini Image generation if available."""
-        loop = asyncio.get_running_loop()
+            result = await asyncio.to_thread(
+                self.generate,
+                prompt,
+            )
 
-        def _call_gemini():
-            from google import genai
-            from google.genai import types
-            client = genai.Client(api_key=settings.GEMINI_API_KEY)
-            
-            # Using Imagen 3 or Gemini image endpoint
-            result = client.models.generate_images(
-                model="imagen-3.0-generate-002",
-                prompt=prompt,
-                config=types.GenerateImagesConfig(
-                    number_of_images=1,
-                    aspect_ratio="1:1",
-                    output_mime_type="image/png",
+            if not result:
+                raise RuntimeError(
+                    "Image provider returned no output."
                 )
-            )
-            if result.generated_images:
-                img_bytes = result.generated_images[0].image.image_bytes
-                return Image.open(io.BytesIO(img_bytes))
-            return None
 
-        try:
-            return await asyncio.wait_for(loop.run_in_executor(None, _call_gemini), timeout=30.0)
-        except Exception as e:
-            logger.debug(f"Gemini generate_images call skipped or failed: {e}")
-            return None
-
-    def _create_stylized_comic_canvas(
-        self,
-        panel_number: int,
-        art_style: str,
-        scene_description: str,
-        visual_prompt: str,
-        width: int = 768,
-        height: int = 768,
-    ) -> Image.Image:
-        """
-        Generates a visually rich, professional comic art placeholder canvas.
-        Includes atmospheric gradients, halftone comic patterns, dramatic horizon,
-        silhouettes, and stylized panel badges.
-        """
-        img = Image.new("RGB", (width, height), color=(15, 20, 30))
-        draw = ImageDraw.Draw(img)
-
-        # Style palette definitions
-        palettes = {
-            "Classic Comic Book (90s Marvel/DC)": [(230, 50, 40), (245, 180, 20), (30, 60, 140)],
-            "Japanese Manga (Clean Ink)": [(30, 30, 35), (140, 145, 155), (240, 240, 245)],
-            "Noir Graphic Novel (High Contrast Shadows)": [(10, 10, 15), (70, 75, 85), (200, 30, 30)],
-            "Vibrant Modern Webtoon": [(120, 40, 220), (250, 80, 160), (40, 200, 240)],
-            "Retro Vintage Pop Art": [(220, 40, 60), (255, 220, 50), (40, 140, 220)],
-            "Dark Fantasy & Gothic Ink": [(20, 15, 30), (90, 50, 80), (180, 120, 70)],
-            "Watercolor Comic Illustration": [(60, 120, 180), (140, 200, 190), (240, 220, 180)],
-        }
-        colors = palettes.get(art_style, [(40, 60, 120), (180, 70, 140), (240, 180, 60)])
-
-        # 1. Atmospheric Vertical Gradient
-        c1, c2, c3 = colors[0], colors[1], colors[2]
-        for y in range(height):
-            ratio = y / height
-            if ratio < 0.5:
-                r_sub = ratio * 2
-                r = int(c1[0] * (1 - r_sub) + c2[0] * r_sub)
-                g = int(c1[1] * (1 - r_sub) + c2[1] * r_sub)
-                b = int(c1[2] * (1 - r_sub) + c2[2] * r_sub)
-            else:
-                r_sub = (ratio - 0.5) * 2
-                r = int(c2[0] * (1 - r_sub) + c3[0] * r_sub)
-                g = int(c2[1] * (1 - r_sub) + c3[1] * r_sub)
-                b = int(c2[2] * (1 - r_sub) + c3[2] * r_sub)
-            draw.line([(0, y), (width, y)], fill=(r, g, b))
-
-        # 2. Comic Halftone / Speed Line Rays
-        center_x, center_y = width // 2, int(height * 0.45)
-        num_rays = 28
-        for i in range(num_rays):
-            angle = (2 * math.pi / num_rays) * i
-            ray_len = width * 0.9
-            end_x = center_x + ray_len * math.cos(angle)
-            end_y = center_y + ray_len * math.sin(angle)
-            draw.line(
-                [(center_x, center_y), (end_x, end_y)],
-                fill=(255, 255, 255, 35),
-                width=2 if i % 2 == 0 else 1,
+            result_path = Path(
+                result
             )
 
-        # 3. Dynamic Comic Silhouettes / Horizon Buildings or Mountains
-        silhouette_color = (12, 14, 20)
-        # Jagged skyline/terrain
-        points = [(0, height), (0, int(height * 0.65))]
-        for x in range(0, width + 50, 45):
-            h_var = int(math.sin(x * 0.05 + panel_number) * 40 + math.cos(x * 0.02) * 30)
-            points.append((x, int(height * 0.68) + h_var))
-        points.append((width, height))
-        draw.polygon(points, fill=silhouette_color)
+            if not result_path.exists():
+                raise RuntimeError(
+                    "Image provider returned "
+                    f"missing file: {result_path}"
+                )
 
-        # Dramatic hero silhouette standing on cliff/ledge
-        hero_x = int(width * 0.48)
-        hero_y = int(height * 0.62)
-        # Cape / body
-        draw.polygon(
-            [
-                (hero_x - 20, hero_y + 60),
-                (hero_x + 20, hero_y + 60),
-                (hero_x + 10, hero_y + 10),
-                (hero_x - 10, hero_y + 10),
-            ],
-            fill=(5, 5, 8),
-        )
-        # Head / hood
-        draw.ellipse([(hero_x - 12, hero_y - 10), (hero_x + 12, hero_y + 14)], fill=(5, 5, 8))
-        # Flowing cape edge
-        draw.polygon(
-            [(hero_x - 10, hero_y + 15), (hero_x - 55, hero_y + 55), (hero_x - 8, hero_y + 40)],
-            fill=(8, 8, 12),
-        )
+            # Create our own safe ComicCraft filename.
+            filename = (
+                f"{comic_id}_panel_"
+                f"{panel_number}_"
+                f"{uuid4().hex[:8]}.png"
+            )
 
-        # 4. Bold Comic Border
-        border_width = 8
-        draw.rectangle(
-            [(border_width // 2, border_width // 2), (width - border_width // 2, height - border_width // 2)],
-            outline=(10, 10, 15),
-            width=border_width,
-        )
+            output_path = (
+                settings.IMAGES_DIR
+                / filename
+            )
 
-        # 5. Panel Number Badge (top-left classic comic corner box)
-        badge_box = [(16, 16), (160, 60)]
-        draw.rectangle(badge_box, fill=(245, 190, 20), outline=(10, 10, 15), width=3)
-        draw.text((26, 26), f"PANEL {panel_number}", fill=(10, 10, 15))
+            static_path = (
+                settings.STATIC_DIR
+                / "generated"
+                / filename
+            )
 
-        # 6. Stylized Art Style Tag (bottom-right)
-        style_short = art_style.split("(")[0].strip()[:24]
-        tag_box = [(width - 240, height - 50), (width - 18, height - 18)]
-        draw.rectangle(tag_box, fill=(15, 18, 25), outline=(245, 190, 20), width=2)
-        draw.text((width - 228, height - 42), style_short, fill=(240, 240, 245))
+            output_path.parent.mkdir(
+                parents=True,
+                exist_ok=True,
+            )
 
-        return img
+            static_path.parent.mkdir(
+                parents=True,
+                exist_ok=True,
+            )
 
-    def _save_and_mirror_image(self, img: Image.Image, primary_path: Path, static_path: Path) -> None:
-        """Saves image to primary storage and mirrors it to the static folder for immediate HTTP serving."""
-        primary_path.parent.mkdir(parents=True, exist_ok=True)
-        static_path.parent.mkdir(parents=True, exist_ok=True)
+            # Copy provider image into ComicCraft storage.
+            output_path.write_bytes(
+                result_path.read_bytes()
+            )
 
-        img.save(primary_path, format="PNG", optimize=True)
-        img.save(static_path, format="PNG", optimize=True)
+            static_path.write_bytes(
+                result_path.read_bytes()
+            )
 
-        # Validate that image is non-empty and readable
-        if not primary_path.exists() or primary_path.stat().st_size == 0:
-            raise ImageServiceError(f"Generated image failed validation: {primary_path}")
+            url = (
+                f"/static/generated/"
+                f"{filename}"
+            )
+
+            logger.info(
+                "Generated panel %s for comic %s",
+                panel_number,
+                comic_id,
+            )
+
+            return (
+                filename,
+                url,
+            )
+
+        except Exception as error:
+
+            logger.warning(
+                "Image provider failed for panel %s: %s. "
+                "Using local fallback.",
+                panel_number,
+                error,
+            )
+
+            return self._create_fallback_image(
+                comic_id=comic_id,
+                panel_number=panel_number,
+                visual_prompt=visual_prompt,
+                art_style=art_style,
+            )
 
 
 image_service = ImageService()
