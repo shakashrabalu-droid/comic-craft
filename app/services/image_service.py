@@ -1,17 +1,7 @@
-﻿"""
-ComicCraft - Image Generation Service
-
-Handles:
-- Flux/HuggingFace image generation
-- Character continuity prompts
-- Local fallback image generation
-- Static image URLs
-"""
-
-import asyncio
+﻿import asyncio
 import logging
 from pathlib import Path
-from typing import Any, Optional
+from typing import Optional
 from uuid import uuid4
 
 from PIL import Image, ImageDraw, ImageFont
@@ -23,111 +13,39 @@ logger = logging.getLogger(__name__)
 
 
 class ImageService:
+    """
+    ComicCraft image generation service.
+
+    Primary provider:
+        Hugging Face
+
+    Fallback:
+        Local placeholder image
+
+    Gemini is NOT used for image generation.
+    """
 
     def __init__(self):
         self.backend = settings.IMAGE_GENERATION_BACKEND
 
     # ============================================================
-    # CHARACTER CONTINUITY
-    # ============================================================
-
-    @staticmethod
-    def _character_continuity(
-        character_profiles: Optional[list[Any]],
-    ) -> str:
-
-        if not character_profiles:
-            return ""
-
-        parts = []
-
-        for character in character_profiles:
-
-            try:
-                if hasattr(
-                    character,
-                    "to_continuity_prompt",
-                ):
-                    parts.append(
-                        character.to_continuity_prompt()
-                    )
-                    continue
-
-                name = getattr(
-                    character,
-                    "name",
-                    "",
-                )
-
-                role = getattr(
-                    character,
-                    "role",
-                    "",
-                )
-
-                appearance = getattr(
-                    character,
-                    "appearance",
-                    "",
-                )
-
-                hair = getattr(
-                    character,
-                    "hair",
-                    "",
-                )
-
-                clothing = getattr(
-                    character,
-                    "clothing",
-                    "",
-                )
-
-                parts.append(
-                    (
-                        f"{name} ({role}); "
-                        f"Appearance: {appearance}; "
-                        f"Hair: {hair}; "
-                        f"Clothing: {clothing}"
-                    )
-                )
-
-            except Exception:
-                continue
-
-        if not parts:
-            return ""
-
-        return (
-            "\nCHARACTER CONTINUITY:\n"
-            + "\n".join(
-                f"- {item}"
-                for item in parts
-            )
-        )
-
-    # ============================================================
-    # PROVIDER
+    # PROVIDER IMAGE GENERATION
     # ============================================================
 
     def generate(
         self,
         prompt: str,
+        filename: str,
     ) -> Path:
+        """
+        Generate an image using the configured image provider.
+        """
 
-        if self.backend in (
-            "auto",
-            "huggingface",
-        ):
-
-            # IMPORTANT:
-            # flux_service.generate() accepts the prompt.
-            # Do NOT pass filename= here.
-            result = flux_service.generate(
+        if self.backend in ("auto", "huggingface"):
+            return flux_service.generate(
                 prompt=prompt,
+                filename=filename,
             )
-
-            return Path(result)
 
         if self.backend == "fallback":
             raise RuntimeError(
@@ -136,13 +54,11 @@ class ImageService:
 
         if self.backend == "gemini":
             raise RuntimeError(
-                "Gemini image backend is not "
-                "implemented in ImageService."
+                "Gemini image generation is not used by ComicCraft."
             )
 
         raise RuntimeError(
-            f"Unsupported image generation backend: "
-            f"{self.backend}"
+            f"Unsupported image generation backend: {self.backend}"
         )
 
     # ============================================================
@@ -156,6 +72,12 @@ class ImageService:
         visual_prompt: str,
         art_style: str,
     ):
+        """
+        Create a local placeholder image when the provider fails.
+
+        This keeps the comic pipeline operational even when the
+        external image provider is unavailable.
+        """
 
         unique_id = uuid4().hex[:8]
 
@@ -164,11 +86,7 @@ class ImageService:
             f"{unique_id}.png"
         )
 
-        output_path = (
-            settings.IMAGES_DIR
-            / filename
-        )
-
+        output_path = settings.IMAGES_DIR / filename
         static_path = (
             settings.STATIC_DIR
             / "generated"
@@ -194,11 +112,31 @@ class ImageService:
             "#111111",
         )
 
-        draw = ImageDraw.Draw(
-            image
-        )
+        draw = ImageDraw.Draw(image)
 
-        # Border
+        # --------------------------------------------------------
+        # Fonts
+        # --------------------------------------------------------
+
+        try:
+            font_large = ImageFont.truetype(
+                "arial.ttf",
+                28,
+            )
+
+            font_small = ImageFont.truetype(
+                "arial.ttf",
+                20,
+            )
+
+        except Exception:
+            font_large = ImageFont.load_default()
+            font_small = ImageFont.load_default()
+
+        # --------------------------------------------------------
+        # Outer border
+        # --------------------------------------------------------
+
         draw.rectangle(
             (
                 20,
@@ -210,7 +148,10 @@ class ImageService:
             width=4,
         )
 
+        # --------------------------------------------------------
         # Header
+        # --------------------------------------------------------
+
         draw.rectangle(
             (
                 40,
@@ -223,31 +164,8 @@ class ImageService:
         )
 
         title = (
-            f"COMICCRAFT • PANEL "
-            f"{panel_number}"
+            f"COMICCRAFT • PANEL {panel_number}"
         )
-
-        try:
-
-            font_large = ImageFont.truetype(
-                "arial.ttf",
-                28,
-            )
-
-            font_small = ImageFont.truetype(
-                "arial.ttf",
-                20,
-            )
-
-        except Exception:
-
-            font_large = (
-                ImageFont.load_default()
-            )
-
-            font_small = (
-                ImageFont.load_default()
-            )
 
         draw.text(
             (60, 65),
@@ -256,7 +174,10 @@ class ImageService:
             font=font_large,
         )
 
-        # Main visual area
+        # --------------------------------------------------------
+        # Visual area
+        # --------------------------------------------------------
+
         visual_box = (
             60,
             160,
@@ -270,7 +191,10 @@ class ImageService:
             width=2,
         )
 
-        # Simple cinematic placeholder
+        # --------------------------------------------------------
+        # Simple placeholder composition
+        # --------------------------------------------------------
+
         center_x = width // 2
         center_y = 450
 
@@ -307,42 +231,42 @@ class ImageService:
             width=4,
         )
 
-        # Prompt
-        prompt_text = (
-            visual_prompt[:240]
-        )
+        # --------------------------------------------------------
+        # Prompt information
+        # --------------------------------------------------------
+
+        prompt_text = visual_prompt[:240]
 
         draw.text(
-            (
-                75,
-                height - 145,
-            ),
+            (75, height - 145),
             prompt_text,
             fill="#FFFFFF",
             font=font_small,
         )
 
         draw.text(
-            (
-                75,
-                height - 95,
-            ),
+            (75, height - 95),
             f"Style: {art_style[:100]}",
             fill="#BBBBBB",
             font=font_small,
         )
 
+        # --------------------------------------------------------
+        # Save
+        # --------------------------------------------------------
+
         image.save(
-            output_path
+            output_path,
+            format="PNG",
         )
 
         image.save(
-            static_path
+            static_path,
+            format="PNG",
         )
 
         url = (
-            f"/static/generated/"
-            f"{filename}"
+            f"/static/generated/{filename}"
         )
 
         logger.info(
@@ -350,13 +274,10 @@ class ImageService:
             output_path,
         )
 
-        return (
-            filename,
-            url,
-        )
+        return filename, url
 
     # ============================================================
-    # PANEL IMAGE
+    # PANEL GENERATION
     # ============================================================
 
     async def generate_panel_image(
@@ -366,18 +287,97 @@ class ImageService:
         visual_prompt: str,
         art_style: str,
         scene_description: Optional[str] = None,
-        character_profiles: Optional[list[Any]] = None,
-        **kwargs: Any,
+        character_profiles=None,
     ):
+        """
+        Generate a comic panel.
 
-        continuity = (
-            self._character_continuity(
-                character_profiles
-            )
+        Primary path:
+            Comic prompt
+                ↓
+            Hugging Face
+                ↓
+            PNG
+
+        Failure path:
+            Local placeholder
+        """
+
+        # --------------------------------------------------------
+        # Unique filename for this panel
+        # --------------------------------------------------------
+
+        provider_filename = (
+            f"{comic_id}_panel_{panel_number}_"
+            f"{uuid4().hex[:8]}.png"
         )
 
+        # --------------------------------------------------------
+        # Character continuity
+        # --------------------------------------------------------
+
+        character_context = ""
+
+        if character_profiles:
+            character_lines = []
+
+            for character in character_profiles:
+                try:
+                    if hasattr(character, "to_prompt"):
+                        character_lines.append(
+                            character.to_prompt()
+                        )
+                    elif hasattr(character, "model_dump"):
+                        data = character.model_dump()
+
+                        name = data.get(
+                            "name",
+                            "Character",
+                        )
+
+                        appearance = data.get(
+                            "appearance",
+                            "",
+                        )
+
+                        clothing = data.get(
+                            "clothing",
+                            "",
+                        )
+
+                        hair = data.get(
+                            "hair",
+                            "",
+                        )
+
+                        character_lines.append(
+                            f"{name}: "
+                            f"{appearance}; "
+                            f"{hair}; "
+                            f"{clothing}"
+                        )
+                    else:
+                        character_lines.append(
+                            str(character)
+                        )
+
+                except Exception:
+                    character_lines.append(
+                        str(character)
+                    )
+
+            if character_lines:
+                character_context = (
+                    "\n\nCHARACTER CONTINUITY:\n"
+                    + "\n".join(character_lines)
+                )
+
+        # --------------------------------------------------------
+        # Final image prompt
+        # --------------------------------------------------------
+
         prompt = f"""
-Create a high-quality comic panel illustration.
+Create a single high-quality comic book panel illustration.
 
 ART STYLE:
 {art_style}
@@ -387,28 +387,40 @@ VISUAL DESCRIPTION:
 
 SCENE:
 {scene_description or visual_prompt}
+{character_context}
 
-{continuity}
-
-REQUIREMENTS:
-- cinematic comic composition
+COMPOSITION REQUIREMENTS:
+- cinematic comic-book composition
 - strong subject separation
-- clear character poses
-- detailed environment
-- consistent character appearance
-- dramatic lighting
 - readable silhouettes
-- no UI elements
-- no watermark
+- expressive character poses
+- detailed environment
+- dynamic camera angle
+- dramatic lighting
+- professional illustrated artwork
+- consistent character appearance
+- coherent visual storytelling
+- polished finished artwork
+
+IMPORTANT:
 - no speech bubbles
-- no written text
+- no captions
+- no UI elements
+- no borders
+- no watermark
+- no logos
+- no written text inside the artwork
 """
 
-        try:
+        # --------------------------------------------------------
+        # Try Hugging Face
+        # --------------------------------------------------------
 
+        try:
             result = await asyncio.to_thread(
                 self.generate,
                 prompt,
+                provider_filename,
             )
 
             if not result:
@@ -416,27 +428,15 @@ REQUIREMENTS:
                     "Image provider returned no output."
                 )
 
-            result_path = Path(
-                result
-            )
+            result_path = Path(result)
 
             if not result_path.exists():
                 raise RuntimeError(
-                    "Image provider returned "
-                    f"missing file: {result_path}"
+                    "Image provider returned a missing file: "
+                    f"{result_path}"
                 )
 
-            # Create our own safe ComicCraft filename.
-            filename = (
-                f"{comic_id}_panel_"
-                f"{panel_number}_"
-                f"{uuid4().hex[:8]}.png"
-            )
-
-            output_path = (
-                settings.IMAGES_DIR
-                / filename
-            )
+            filename = result_path.name
 
             static_path = (
                 settings.STATIC_DIR
@@ -444,43 +444,39 @@ REQUIREMENTS:
                 / filename
             )
 
-            output_path.parent.mkdir(
-                parents=True,
-                exist_ok=True,
-            )
-
             static_path.parent.mkdir(
                 parents=True,
                 exist_ok=True,
             )
 
-            # Copy provider image into ComicCraft storage.
-            output_path.write_bytes(
-                result_path.read_bytes()
-            )
-
-            static_path.write_bytes(
-                result_path.read_bytes()
-            )
+            # Copy generated image to static directory.
+            if (
+                result_path.resolve()
+                != static_path.resolve()
+            ):
+                static_path.write_bytes(
+                    result_path.read_bytes()
+                )
 
             url = (
-                f"/static/generated/"
-                f"{filename}"
+                f"/static/generated/{filename}"
             )
 
             logger.info(
-                "Generated panel %s for comic %s",
-                panel_number,
+                "REAL AI panel generated | "
+                "comic=%s | panel=%s | file=%s",
                 comic_id,
+                panel_number,
+                filename,
             )
 
-            return (
-                filename,
-                url,
-            )
+            return filename, url
+
+        # --------------------------------------------------------
+        # Provider failure → local fallback
+        # --------------------------------------------------------
 
         except Exception as error:
-
             logger.warning(
                 "Image provider failed for panel %s: %s. "
                 "Using local fallback.",
@@ -495,5 +491,9 @@ REQUIREMENTS:
                 art_style=art_style,
             )
 
+
+# ============================================================
+# SERVICE INSTANCE
+# ============================================================
 
 image_service = ImageService()

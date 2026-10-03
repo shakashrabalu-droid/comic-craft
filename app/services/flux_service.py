@@ -1,121 +1,134 @@
-﻿"""
-ComicCraft - FLUX Image Generation Service
-
-Handles communication with Hugging Face Inference Providers
-and FLUX.1-dev.
-
-Architecture:
-
-FastAPI
-   ↓
-ImageService
-   ↓
-FluxService
-   ↓
-Hugging Face
-   ↓
-Fal AI
-   ↓
-FLUX.1-dev
-"""
-
+﻿import logging
+import os
 from pathlib import Path
 from typing import Optional
-from uuid import uuid4
 
+from dotenv import load_dotenv
 from huggingface_hub import InferenceClient
 
 from app.config import settings
 
+load_dotenv()
+
+logger = logging.getLogger(__name__)
+
 
 class FluxService:
-    """Service responsible for FLUX.1-dev image generation."""
+    """
+    Hugging Face image generation service.
 
-    def __init__(self) -> None:
+    Gemini is used for text generation.
+    Hugging Face is used for comic panel image generation.
+    """
 
-        if not settings.HF_TOKEN:
-            raise RuntimeError(
-                "HF_TOKEN is missing. "
-                "Add your Hugging Face token to .env"
-            )
-
-        self.client = InferenceClient(
-            provider=settings.HF_PROVIDER,
-            api_key=settings.HF_TOKEN,
+    def __init__(self):
+        self.api_key = (
+            os.getenv("HF_TOKEN")
+            or getattr(settings, "HUGGINGFACE_API_KEY", None)
         )
 
-        self.model = settings.FLUX_MODEL
+        self.provider = os.getenv(
+            "HF_PROVIDER",
+            "hf-inference",
+        )
 
+        self.model = os.getenv(
+            "FLUX_MODEL",
+            "stabilityai/stable-diffusion-3-medium-diffusers",
+        )
+
+        self.width = int(
+            os.getenv("IMAGE_WIDTH", "1024")
+        )
+
+        self.height = int(
+            os.getenv("IMAGE_HEIGHT", "1024")
+        )
+
+        self.steps = int(
+            os.getenv("IMAGE_STEPS", "28")
+        )
+
+        self.guidance_scale = float(
+            os.getenv("IMAGE_GUIDANCE_SCALE", "7.0")
+        )
+
+        self.client: Optional[InferenceClient] = None
+
+        if self.api_key:
+            self.client = InferenceClient(
+                provider=self.provider,
+                api_key=self.api_key,
+            )
+
+            logger.info(
+                "Hugging Face image client initialized | "
+                "provider=%s | model=%s",
+                self.provider,
+                self.model,
+            )
+        else:
+            logger.warning(
+                "Hugging Face token not configured."
+            )
 
     def generate(
         self,
         prompt: str,
-        negative_prompt: Optional[str] = None,
-        width: Optional[int] = None,
-        height: Optional[int] = None,
-        steps: Optional[int] = None,
-        guidance_scale: Optional[float] = None,
-        seed: Optional[int] = None,
-    ) -> dict:
+        filename: str,
+    ) -> Path:
         """
-        Generate an image using FLUX.1-dev.
+        Generate a real AI image using Hugging Face.
         """
 
-        width = width or settings.IMAGE_WIDTH
+        if self.client is None:
+            raise RuntimeError(
+                "Hugging Face token is missing. "
+                "Set HF_TOKEN in .env."
+            )
 
-        height = height or settings.IMAGE_HEIGHT
-
-        steps = steps or settings.IMAGE_STEPS
-
-        guidance_scale = (
-            guidance_scale
-            if guidance_scale is not None
-            else settings.IMAGE_GUIDANCE_SCALE
+        output_path = settings.IMAGES_DIR / filename
+        output_path.parent.mkdir(
+            parents=True,
+            exist_ok=True,
         )
 
+        logger.info(
+            "Generating AI image | provider=%s | model=%s",
+            self.provider,
+            self.model,
+        )
 
         image = self.client.text_to_image(
             prompt=prompt,
             model=self.model,
-            negative_prompt=negative_prompt,
-            width=width,
-            height=height,
-            num_inference_steps=steps,
-            guidance_scale=guidance_scale,
-            seed=seed,
+            width=self.width,
+            height=self.height,
+            num_inference_steps=self.steps,
+            guidance_scale=self.guidance_scale,
         )
 
-
-        # ------------------------------------------
-        # Save generated image
-        # ------------------------------------------
-
-        filename = (
-            f"{uuid4().hex}_flux.png"
-        )
-
-        output_path = (
-            Path(settings.IMAGES_DIR)
-            / filename
-        )
+        if image is None:
+            raise RuntimeError(
+                "Hugging Face returned no image."
+            )
 
         image.save(
             output_path,
             format="PNG",
         )
 
+        if not output_path.exists():
+            raise RuntimeError(
+                f"Image was not saved: {output_path}"
+            )
 
-        return {
-            "success": True,
-            "filename": filename,
-            "path": str(output_path),
-            "model": self.model,
-            "provider": settings.HF_PROVIDER,
-            "width": width,
-            "height": height,
-            "seed": seed,
-        }
+        logger.info(
+            "REAL AI image generated: %s",
+            output_path,
+        )
+
+        return output_path
 
 
-# Singleton instance
 flux_service = FluxService()
